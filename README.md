@@ -5,8 +5,8 @@ RxJava Observables for Android Bluetooth
 
 Quick overview:
 
-method| description
--|-
+method|description
+---|---
 `enableBluetooth` | enables Bluetooth and emits Bluetooth state changes until STATE_ON or STATE_OFF is reached, then completes
 `disableBluetooth` | enables Bluetooth and emits Bluetooth state changes until STATE_ON or STATE_OFF is reached, then completes
 `observeBluetoothState` | emits Bluetooth state changes, indefinitely
