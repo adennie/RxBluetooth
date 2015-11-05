@@ -114,6 +114,26 @@ public final class RxBluetooth {
     }
 
     /**
+     * Returns an Observable that emits Bluetooth state changes to BluetoothAdapter.STATE_ON and STATE_OFF,
+     * (only), filtering out redundant changes (i.e. STATE_ON->STATE_ON or STATE_OFF->STATE_OFF)
+     *
+     * @param context an Android Context
+     * @return the Observable
+     */
+    @CheckResult
+    @NonNull
+    public static Observable<Integer> observeBluetoothStateOnOff(@NonNull Context context) {
+        return observeBluetoothState(context)
+                .filter(new Func1<Integer, Boolean>() {
+                    @Override
+                    public Boolean call(Integer state) {
+                        return state == BluetoothAdapter.STATE_OFF || state == BluetoothAdapter.STATE_ON;
+                    }
+                })
+                .distinctUntilChanged();
+    }
+
+    /**
      * Returns an Observable that emits a BluetoothDevice whenever one is connected.
      *
      * @param context an Android Context
@@ -244,8 +264,8 @@ public final class RxBluetooth {
 
     /**
      * Returns an Observable that emits discovered BluetoothDevices, indefinitely.
-     * @param context
-     * @return
+     * @param context an Android Context
+     * @return the Observable
      */
     @CheckResult
     @NonNull
