@@ -15,7 +15,6 @@ import java.lang.reflect.Method;
 
 import rx.Observable;
 import rx.Subscriber;
-import rx.functions.Func0;
 import rx.functions.Func1;
 
 public final class RxBluetooth {
@@ -27,7 +26,7 @@ public final class RxBluetooth {
      * emitted values will be one of {@link BluetoothAdapter#STATE_OFF}, {@link BluetoothAdapter#STATE_ON},
      * or {@link BluetoothAdapter#STATE_TURNING_ON}.  The stream will terminate when the state changes to either
      * STATE_ON or STATE_OFF.
-     *
+     * <p/>
      * The returned Observable will emit an error if Bluetooth is already enabled or cannot be enabled.
      *
      * @param context an Android Context
@@ -36,24 +35,25 @@ public final class RxBluetooth {
     @CheckResult
     @NonNull
     public static Observable<Integer> enableBluetooth(final Context context) {
-        return Observable.defer(new Func0<Observable<Integer>>() {
+        return Observable.create(new Observable.OnSubscribe<Integer>() {
             @Override
-            public Observable<Integer> call() {
+            public void call(Subscriber<? super Integer> subscriber) {
                 if (bluetoothAdapter.isEnabled()) {
-                    return Observable.error(new IllegalStateException("bluetooth is already enabled"));
+                    subscriber.onError(new IllegalStateException("bluetooth is already enabled"));
                 }
 
+                observeBluetoothState(context)
+                        .takeUntil(new Func1<Integer, Boolean>() {
+                            @Override
+                            public Boolean call(Integer state) {
+                                return state == BluetoothAdapter.STATE_ON || state == BluetoothAdapter.STATE_OFF;
+                            }
+                        })
+                        .subscribe(subscriber);
+
                 if (!bluetoothAdapter.enable()) {
-                    return Observable.error(new IllegalStateException("cannot enable bluetooth (maybe airplane mode " +
+                    subscriber.onError(new IllegalStateException("cannot enable bluetooth (maybe airplane mode " +
                             "is on?"));
-                } else {
-                    return observeBluetoothState(context)
-                            .takeUntil(new Func1<Integer, Boolean>() {
-                                @Override
-                                public Boolean call(Integer state) {
-                                    return state == BluetoothAdapter.STATE_ON || state == BluetoothAdapter.STATE_OFF;
-                                }
-                            });
                 }
             }
         });
@@ -64,7 +64,7 @@ public final class RxBluetooth {
      * emitted values will be one of {@link BluetoothAdapter#STATE_OFF}, {@link BluetoothAdapter#STATE_ON}, or
      * {@link BluetoothAdapter#STATE_TURNING_OFF}.  The stream will terminate when the state changes to either
      * STATE_ON or STATE_OFF.
-     *
+     * <p/>
      * The returned Observable will emit an error if Bluetooth is already disabled or cannot be disabled.
      *
      * @param context an Android Context
@@ -73,23 +73,23 @@ public final class RxBluetooth {
     @CheckResult
     @NonNull
     public static Observable<Integer> disableBluetooth(final Context context) {
-        return Observable.defer(new Func0<Observable<Integer>>() {
+        return Observable.create(new Observable.OnSubscribe<Integer>() {
             @Override
-            public Observable<Integer> call() {
+            public void call(Subscriber<? super Integer> subscriber) {
                 if (!bluetoothAdapter.isEnabled()) {
-                    return Observable.error(new IllegalStateException("bluetooth is already disabled"));
+                    subscriber.onError(new IllegalStateException("bluetooth is already disabled"));
                 }
 
+                observeBluetoothState(context)
+                        .takeUntil(new Func1<Integer, Boolean>() {
+                            @Override
+                            public Boolean call(Integer state) {
+                                return state == BluetoothAdapter.STATE_ON || state == BluetoothAdapter.STATE_OFF;
+                            }
+                        }).subscribe(subscriber);
+
                 if (!bluetoothAdapter.disable()) {
-                    return Observable.error(new IllegalStateException("cannot disable bluetooth"));
-                } else {
-                    return observeBluetoothState(context)
-                            .takeUntil(new Func1<Integer, Boolean>() {
-                                @Override
-                                public Boolean call(Integer state) {
-                                    return state == BluetoothAdapter.STATE_ON || state == BluetoothAdapter.STATE_OFF;
-                                }
-                            });
+                    subscriber.onError(new IllegalStateException("cannot disable bluetooth"));
                 }
             }
         });
@@ -264,6 +264,7 @@ public final class RxBluetooth {
 
     /**
      * Returns an Observable that emits discovered BluetoothDevices, indefinitely.
+     *
      * @param context an Android Context
      * @return the Observable
      */
